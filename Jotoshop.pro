@@ -30,7 +30,9 @@ SOURCES += \
 
 HEADERS += \
         mainwindow.h \
-    reader.h
+    pixel.hpp \
+    reader.hpp \
+    image.hpp
 
 FORMS += \
         mainwindow.ui

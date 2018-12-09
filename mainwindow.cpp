@@ -10,79 +10,8 @@
 #include <array>
 #include <vector>
 #include <iterator>
-
-struct Pixel {
-    int r;
-    int g;
-    int b;
-
-    Pixel(int r,int g,int b){
-        this->r = r;
-        this->g = g;
-        this->b = b;
-    }
-    Pixel() {
-        r = g = b = 0;
-    }
-};
-
-struct FileData {
-    Pixel ** matrix;
-    int width;
-    int height;
-};
-
-
-FileData * ReadBMP(char* filename)
-{
-    int i;
-    FILE* f = fopen(filename, "rb");
-
-    if(f == NULL) {
-        throw "Argument Exception";
-    }
-
-    unsigned char info[54];
-    int HEADER_SIZE = 54;
-    fread(info, sizeof(unsigned char), HEADER_SIZE, f); // read the 54-byte header
-
-    // extract image height and width from header
-    int dataOffset = *(int*)&info[10];
-    int width = *(int*)&info[18];
-    int height = *(int*)&info[22];
-
-    qDebug("width: %d", width);
-    qDebug("height: %d", height);
-    qDebug("dataOffset: %d", dataOffset);
-
-    int row_padded = (width*3 + 3) & (~3);
-    qDebug("row_padded : %d", row_padded);
-    unsigned char* data = new unsigned char[row_padded];
-    unsigned char tmp;
-    Pixel ** matrix;
-    matrix = new Pixel * [height];
-    fread(data, sizeof(unsigned char), dataOffset - HEADER_SIZE, f);
-
-    for(int i = 0; i < height; i++)
-    {
-        fread(data, sizeof(unsigned char), row_padded, f);
-        matrix[i] = new Pixel[width];
-        for(int j = 0; j < width*3; j += 3)
-        {
-            // Convert (B, G, R) to (R, G, B)
-            matrix[i][j/3] = Pixel((int) data[j + 2], (int) data[j+1], (int) data[j]);
-        }
-    }
-
-    FileData * fd = new FileData();
-    fd->matrix = matrix;
-    fd->width = width;
-    fd->height = height;
-
-    fclose(f);
-    return fd;
-}
-
+#include "image.hpp"
+#include "kernels.hpp"
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -90,6 +19,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    img = new Image("/home/josue/Devel/jotoshop/jotoshop/tiger.bmp");
+    renderImage();
 }
 
 MainWindow::~MainWindow()
@@ -97,24 +29,17 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::on_applyButton_clicked()
+void MainWindow::renderImage()
 {
-    QString qFileName = QFileDialog::getOpenFileName(this,
-            tr("Open Image"), "",
-            tr("Image (*.bmp);;"));
-//    qDebug(qUtf8Printable(fileName));
-    QByteArray ba = qFileName.toLocal8Bit();
-    char *fileName = ba.data();
-
-    FileData * fd = ReadBMP(fileName);
-    int width = fd->width;
-    int height = fd->height;
+    int width = img->width;
+    int height = img->height;
     QImage image = QImage(width, height, QImage::Format_RGB32);
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
-            Pixel pixel = fd->matrix[i][j];
-            image.setPixelColor(j, height - i - 1, qRgb(pixel.r, pixel.g, pixel.b));
+            Pixel * pixel = img->matrix[i][j];
+            image.setPixelColor(
+                j, height - i - 1, qRgb(pixel->val[0], pixel->val[1], pixel->val[2]));
         }
     }
 
@@ -123,7 +48,41 @@ void MainWindow::on_applyButton_clicked()
     ui->graphicsView->setScene(graphic);
 }
 
+void MainWindow::on_openFileButton_clicked()
+{
+    QString qFileName = QFileDialog::getOpenFileName(this,
+            tr("Open Image"), "",
+            tr("Image (*.bmp);;"));
+    QByteArray ba = qFileName.toLocal8Bit();
+    char *fileName = ba.data();
+
+}
+
 void MainWindow::on_pushButton_clicked()
 {
+    img->equalize();
+    renderImage();
+}
 
+void MainWindow::on_thresholdButton_clicked()
+{
+    img->threshold();
+    renderImage();
+}
+
+void MainWindow::on_convolutionButton_clicked()
+{
+    int kernelSize = 5;
+    int ** kernel = blurKernel(kernelSize);
+
+    img->convolution(kernelSize, kernel);
+    renderImage();
+}
+
+void MainWindow::on_prewitConvolution_clicked()
+{
+    int ** kernel = prewitKernel();
+
+    img->convolution(3, kernel);
+    renderImage();
 }
