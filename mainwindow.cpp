@@ -86,3 +86,8 @@ void MainWindow::on_prewitConvolution_clicked()
     img->convolution(3, kernel);
     renderImage();
 }
+
+void MainWindow::on_bilinearButton_clicked()
+{
+
+}

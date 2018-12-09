@@ -27,6 +27,8 @@ private slots:
 
     void on_prewitConvolution_clicked();
 
+    void on_bilinearButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     Image * img;
