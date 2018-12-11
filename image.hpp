@@ -93,8 +93,11 @@ public:
     Histogram * histogram() {
         float d = 1.0 / height / width;
         Histogram * hist = new Histogram[mode];
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
+
+        int i, j;
+# pragma omp parallel for num_threads(4) collapse(2) private(i, j)
+        for (i = 0; i < height; i++) {
+            for (j = 0; j < width; j++) {
                 for (int k = 0; k < mode; k++) {
                     hist[k].mat[matrix[i][j]->val[k]]  += d;
                 }
@@ -111,15 +114,19 @@ public:
         for (int i = 0; i < mode; i++) {
             lookup[i] = new float [maxColor];
         }
-        for (int i = 0; i < mode; i++) {
+
+        int i, j;
+
+        for (i = 0; i < mode; i++) {
             Histogram hist = currentHistogram[i];
             float sum = 0;
 
-            for (int j = 0; j < maxColor; j++) {
+            for (j = 0; j < maxColor; j++) {
                 sum += hist.mat[j];
                 lookup[i][j] = sum * 255 + 0.5;
             }
         }
+
 
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
@@ -131,11 +138,12 @@ public:
     }
 
     void threshold(int limit = 128) {
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
+        int i, j;
+# pragma omp parallel for num_threads(4) collapse(2) private(i, j)
+        for (i = 0; i < height; i++) {
+            for (j = 0; j < width; j++) {
                 pint color = 0;
                 int avg = matrix[i][j]->averageColor();
-                // cout << "avg: " << avg << " - ";
                 if (avg > limit) {
                     color = 255;
                 }
@@ -147,8 +155,11 @@ public:
     }
 
     void colorTransformation(int c, pint increase) {
-        for (int i = 0; i < this->height; i++) {
-            for (int j = 0; j < this->width; j++) {
+        int i, j;
+
+# pragma omp parallel for num_threads(4) collapse(2) private(i, j)
+        for (i = 0; i < this->height; i++) {
+            for (j = 0; j < this->width; j++) {
                 if (matrix[i][j] != NULL) {
                     matrix[i][j]->increaseColor(c, increase);
                 }
@@ -167,6 +178,7 @@ public:
         int a, b;
         Image * convoluted = new Image(mode, width, height);
 
+# pragma omp parallel for num_threads(4) collapse(2) private(sum_position, i, j, a, b)
         for (i = begin; i < height - delta; ++i) {
             for(j = begin; j < width - delta; ++j) {
                 for (int k = 0; k < mode; k++) {
@@ -182,6 +194,54 @@ public:
             }
         }
         matrix = convoluted->matrix;
+    }
+
+    Image * interpolation(int zoomX, int zoomY) {
+        int newWidth = width * zoomX;
+        int newHeight = height * zoomY;
+        Image * newImage = new Image(mode, newWidth, newHeight);
+        int i, j;
+
+# pragma omp parallel for num_threads(4) collapse(2) private(i, j)
+        for (i = 0; i < height; i++) {
+            for (j = 0; j < width; j++) {
+                newImage->matrix[i * zoomY][j * zoomX] = new Pixel(*(matrix[i][j]));
+            }
+        }
+
+        for(int j = 0; j < height; j++){
+            for (int i = 0; i + 1 < width; i++) {
+                int x1 = i * zoomX;
+                int x2 = (i + 1) * zoomX;
+                Pixel f_x1(*(matrix[j][i]));
+                Pixel f_x2(*(matrix[j][i + 1]));
+                for (int a = 1; a < zoomX; a++) {
+                    int x = (i * zoomX) + a;
+                    float factor = float(x - x1) / (x2 - x1);
+                    Pixel newPixel = f_x1 + (factor * (f_x2 - f_x1));
+                    newImage->matrix[j * zoomY][i * zoomX + a] = new Pixel(newPixel);
+                }
+                //
+            }
+        }
+
+        for (int i = 0; i < newWidth; i++) {
+            int y1, y2;
+            for (int y = 0; (y + 1) < newHeight; y++) {
+                if ((y % zoomX) == 0) {
+                    y2 = y;
+                    y1 = y + zoomX;
+                    continue;
+                }
+                Pixel r1(*(newImage->matrix[y1][i]));
+                Pixel r2(*newImage->matrix[y2][i]);
+                float factor = float(y - y2) / (y2 - y1);
+                Pixel px = r2 + (factor * (r1 - r2));
+                newImage->matrix[y][i] = new Pixel(px);
+            }
+        }
+
+        return newImage;
     }
 
     void print() {

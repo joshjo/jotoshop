@@ -126,9 +126,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="bilinearButton">
+         <widget class="QPushButton" name="interpolationButton">
           <property name="text">
-           <string>Bilinear</string>
+           <string>Interpolation (2x)</string>
           </property>
          </widget>
         </item>
@@ -147,16 +147,16 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_6">
+         <widget class="QPushButton" name="cmykButton">
           <property name="text">
-           <string>PushButton</string>
+           <string>CMYK</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_5">
+         <widget class="QPushButton" name="hsvButton">
           <property name="text">
-           <string>PushButton</string>
+           <string>HSV</string>
           </property>
          </widget>
         </item>

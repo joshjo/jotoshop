@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QtWidgets>
 #include "image.hpp"
 
 namespace Ui {
@@ -27,12 +28,17 @@ private slots:
 
     void on_prewitConvolution_clicked();
 
-    void on_bilinearButton_clicked();
+    void on_interpolationButton_clicked();
+
+    void on_cmykButton_clicked();
+
+    void on_hsvButton_clicked();
 
 private:
     Ui::MainWindow *ui;
     Image * img;
 
+    void renderImage(QGraphicsView *view);
     void renderImage();
 };
 
